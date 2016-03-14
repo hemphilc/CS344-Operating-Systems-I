@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Corey Hemphill
+# hemphilc@oregonstate.edu
+# CS344_001 - Operating Systems I
+# Assignment 4 - otp
+# March 14, 2016
+# compileall
+
+gcc -o keygen keygen.c
+gcc -o otp_dec otp_dec.c
+gcc -o otp_dec_d otp_dec_d.c
+gcc -o otp_enc otp_enc.c
+gcc -o otp_enc_d otp_enc_d.c

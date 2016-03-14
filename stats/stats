@@ -1,0 +1,192 @@
+#!/bin/bash
+
+# Corey Hemphill 
+# hemphilc@oregonstate.edu
+# CS344_100 - Operating Systems I
+# Assignment 1 - stats
+# January 25, 2016
+
+# Create temporary file for <PID> storage
+echo -e "PID: $$" > TEMP.$$
+
+# Trappin'
+trap "rm -f TEMP.$$; rm -f TEMP1.$$; exit 1" HUP INT QUIT TERM KILL
+
+# Functions ##################################################
+
+# Calculates averages and medians for the rows and prints results
+processRows() {
+	echo "Average  Median"
+	while read line
+	do
+		nums=($line)
+		avg=0
+		med=0
+		mpos=0
+		# Sum all of num array's values
+		for i in "${nums[@]}"
+		do
+			avg=`expr $avg + $i`
+		done
+		numCols=${#nums[@]}
+		avg=`expr $avg + \( $numCols / 2 \)`
+		avg=`expr $avg / $numCols`
+		mpos=`expr $numCols / 2`
+		# Sort the array/list
+		sortedList=($(printf '%s\n' "${nums[@]}" | sort -g ))
+		# Determine the median value from the sorted list
+		if [ $((numCols%2)) -eq 0 ]
+		then
+			mpos=`expr $mpos - 1`
+			# Take the larger of the two medians if necessary
+			if [[ "nums[$mpos]" < "nums[$mpos+1]" ]]
+			then
+				mpos=`expr $mpos + 1`
+			fi
+		fi
+		med=`expr ${sortedList[$mpos]}`
+		# Print averages and medians
+		echo -e $avg '\t' $med
+	done<$input_file
+};
+
+# Calculates averages and medians for the columns and prints results
+processCols() {
+	avgs=
+	meds=
+	# Do a word (number) count
+	x=($(wc $input_file))
+	# Check to see if the file is empty
+	if [ ${x[1]} -gt 0 ]
+	then	
+		# Rotate the input file and print to a temp file
+		numCols=`expr ${x[1]} / ${x[0]}`	# Total #s / # of Rows
+		i=1
+		while [ $i -le $numCols ]
+		do
+			# Cut columns by fields
+			cut -f $i $input_file >> tempCol.$$
+			echo "" >> tempCol.$$
+			i=`expr $i + 1`
+		done
+		# Truncate and dump as row to new temp file
+		cat tempCol.$$ | tr '\n' '\t' > tempRow.$$
+		# Remove all triple tabs	
+		sed -i -- "s/\t\t/\n/g" tempRow.$$
+		# Reassign input_file to tempRow file
+		input_file=tempRow.$$
+		while read line
+		do
+			nums=($line)
+			avg=0
+			med=0
+			mpos=0
+			# Sum all of num array's values
+			for i in "${nums[@]}"
+			do
+				avg=`expr $avg + $i`
+			done
+			numRows=${#nums[@]}
+			avg=`expr $avg + \( $numRows / 2 \)`
+			avg=`expr $avg / $numRows`
+			mpos=`expr $numRows / 2`
+			# Sort the array/list
+			sortedList=($(printf '%s\n' "${nums[@]}" | sort -g ))
+			# Determine the median value from the sorted list
+			if [ $((numRows%2)) -eq 0 ]
+			then
+				mpos=`expr $mpos - 1`
+				# Take the larger of the two medians if necessary
+				if [[ "nums[$mpos]" < "nums[$mpos+1]" ]]
+				then
+					mpos=`expr $mpos + 1`
+				fi
+			fi
+			med=`expr ${sortedList[$mpos]}`
+			# Print average and median values to file for storage
+			printf "%d\t" $avg >> avgs
+			printf "%d\t" $med >> meds
+		done<$input_file
+		# Remove temporary files
+		rm -f tempCol.$$ tempRow.$$
+	fi	
+	echo "" >> avgs
+	echo "" >> meds
+	# Print averages from array
+	echo "Averages:"
+	cat avgs
+	# Print medians
+	echo "Medians:"
+	cat meds
+	# Remove extra files
+	rm -f avgs meds
+};
+
+# Displays usage error message to the user
+displayUsageErr() {
+	echo "Usage: stats {-rows|-cols} [file]" 1>&2
+	cleanUp
+	exit 1
+};
+
+# Performs the necessary clean up of files
+cleanUp() {
+	# Check for the existence of temporary files and delete them.
+	if [ -e TEMP.$$ ]
+	then
+		rm -f TEMP.$$
+	fi
+	if [ -e TEMP1.$$ ]
+	then
+		rm -f TEMP1.$$
+	fi
+};
+
+# Main #######################################################
+
+# Check the number of arguments being passed in (1<=$#<=2)
+if [ $# -le 2 ] && [ $# -ge 1 ]
+then
+	# Check argument $1's format
+	if [[ $1 == -r* ]] || [[ $1 == -c* ]]
+	then
+		# Check to see if argument $2 exists/is an empty string
+		if [ $2 ]
+		then	
+			# Check to see if argument $2 is readable/is a normal file
+			if [ -r $2 ] && [ -f $2 ]
+			then
+				# Assign input_file name to argument $2
+				input_file=$2
+			# File doesn't exist, is not readable, or is not normal
+			else
+				# Display error message, clean up, and exit
+				echo "stats: cannot read $2" 1>&2
+				cleanUp
+				exit 1
+			fi
+		# Parameter $2 not provided --> Get stdin
+		else
+			cat > TEMP1.$$
+			input_file=TEMP1.$$
+		fi
+		# If "-r", process rows, otherwise process cols
+		if [[ $1 == -r* ]]
+		then
+			# Call function to process rows
+			processRows
+		else	
+			# Call function to process columns
+			processCols
+		fi
+	# Display error message
+	else
+		displayUsageErr
+	fi
+# Display error message
+else
+	displayUsageErr
+fi
+# Perform clean up
+cleanUp
+

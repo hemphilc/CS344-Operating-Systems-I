@@ -2,7 +2,7 @@
 
 # Corey Hemphill
 # hemphilc@oregonstate.edu
-# CS344_100 Operating Systems I
+# CS344_001 Operating Systems I
 # Assignment 5 - Python Exploration
 # January 16, 2016
 
